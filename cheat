@@ -1,0 +1,644 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+local function decodeBase64(str)
+    local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    str = string.gsub(str, '[^'..b64chars..'=]', '')
+    local result = {}
+    for i = 1, #str, 4 do
+        local a, b, c, d = string.byte(str, i, i+3)
+        local x = ((b64chars:find(string.char(a))-1) * 4 + (b64chars:find(string.char(b))-1)) * 64 + (c and (b64chars:find(string.char(c))-1) or 0)
+        local y = (d and (b64chars:find(string.char(d))-1) or 0)
+        table.insert(result, string.char(math.floor(x/256)))
+        if c then table.insert(result, string.char(math.floor((x%256)/4) * 64 + math.floor(y/4))) end
+        if d then table.insert(result, string.char((y%4) * 64 + (d == '=' and 0 or (b64chars:find(string.char(d))-1) % 4))) end
+    end
+    return table.concat(result):gsub('%z', '')
+end
+
+local ENC_LOGIN = "ZWdvcg=="
+local ENC_PASS  = "bG94"
+
+local function findAllEggs()
+    local eggs = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (string.lower(obj.Name):find("egg") or string.lower(obj.Name):find("яйц")) then
+            table.insert(eggs, obj)
+        end
+    end
+    if #eggs == 0 then
+        for _, folder in ipairs(Workspace:GetChildren()) do
+            if folder:IsA("Folder") and (string.lower(folder.Name):find("egg") or string.lower(folder.Name):find("яйц")) then
+                for _, child in ipairs(folder:GetChildren()) do
+                    if child:IsA("BasePart") then
+                        table.insert(eggs, child)
+                    end
+                end
+            end
+        end
+    end
+    return eggs
+end
+
+local function findClickDetector(part)
+    local cd = part:FindFirstChild("ClickDetector")
+    if not cd then
+        for _, child in ipairs(part:GetDescendants()) do
+            if child:IsA("ClickDetector") then
+                cd = child
+                break
+            end
+        end
+    end
+    return cd
+end
+
+local function findEnergyStat()
+    local stats = player:FindFirstChild("leaderstats")
+    if stats then
+        for _, stat in ipairs(stats:GetChildren()) do
+            if stat:IsA("NumberValue") and (string.lower(stat.Name):find("energy") or string.lower(stat.Name):find("энерг")) then
+                return stat
+            end
+        end
+    end
+    for _, child in ipairs(player:GetChildren()) do
+        if child:IsA("NumberValue") and (string.lower(child.Name):find("energy") or string.lower(child.Name):find("энерг")) then
+            return child
+        end
+    end
+    return nil
+end
+
+local function findUpgradeButton()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (string.lower(obj.Name):find("upgrade") or string.lower(obj.Name):find("апгрейд") or string.lower(obj.Name):find("улучш")) then
+            local cd = findClickDetector(obj)
+            if cd then return cd end
+        end
+    end
+    for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+        if gui:IsA("TextButton") and (string.lower(gui.Name):find("upgrade") or string.lower(gui.Name):find("апгрейд") or string.lower(gui.Text):find("улучш")) then
+            return gui
+        end
+    end
+    return nil
+end
+
+local function findHatchButton()
+    for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+        if gui:IsA("TextButton") and (string.lower(gui.Name):find("hatch") or string.lower(gui.Text):find("вылуп") or string.lower(gui.Text):find("hatch")) then
+            return gui
+        end
+    end
+    return nil
+end
+
+local function findShopButton()
+    for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+        if gui:IsA("TextButton") and (string.lower(gui.Name):find("shop") or string.lower(gui.Text):find("магазин") or string.lower(gui.Text):find("shop")) then
+            return gui
+        end
+    end
+    return nil
+end
+
+local loginScreen = Instance.new("ScreenGui")
+loginScreen.Parent = player.PlayerGui
+
+local loginFrame = Instance.new("Frame")
+loginFrame.Size = UDim2.new(0, 350, 0, 280)
+loginFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+loginFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+loginFrame.BackgroundTransparency = 0.15
+loginFrame.BorderSizePixel = 0
+loginFrame.Active = true
+loginFrame.Draggable = true
+loginFrame.Parent = loginScreen
+
+local blur = Instance.new("BlurEffect", Lighting)
+blur.Size = 14
+
+local titleLogin = Instance.new("TextLabel")
+titleLogin.Size = UDim2.new(1, 0, 0, 50)
+titleLogin.BackgroundTransparency = 1
+titleLogin.Text = "🔐 ВХОД В ЧИТ"
+titleLogin.TextColor3 = Color3.fromRGB(255, 215, 0)
+titleLogin.TextSize = 24
+titleLogin.Font = Enum.Font.GothamBold
+titleLogin.Parent = loginFrame
+
+local userLabel = Instance.new("TextLabel")
+userLabel.Size = UDim2.new(0.8, 0, 0, 25)
+userLabel.Position = UDim2.new(0.1, 0, 0.2, 10)
+userLabel.BackgroundTransparency = 1
+userLabel.Text = "Логин"
+userLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+userLabel.TextSize = 16
+userLabel.TextXAlignment = Enum.TextXAlignment.Left
+userLabel.Parent = loginFrame
+
+local userBox = Instance.new("TextBox")
+userBox.Size = UDim2.new(0.8, 0, 0, 35)
+userBox.Position = UDim2.new(0.1, 0, 0.3, -5)
+userBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+userBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+userBox.TextSize = 18
+userBox.Font = Enum.Font.Gotham
+userBox.PlaceholderText = "Введите логин"
+userBox.Text = ""
+userBox.ClearTextOnFocus = true
+userBox.Parent = loginFrame
+
+local passLabel = Instance.new("TextLabel")
+passLabel.Size = UDim2.new(0.8, 0, 0, 25)
+passLabel.Position = UDim2.new(0.1, 0, 0.45, 5)
+passLabel.BackgroundTransparency = 1
+passLabel.Text = "Пароль"
+passLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+passLabel.TextSize = 16
+passLabel.TextXAlignment = Enum.TextXAlignment.Left
+passLabel.Parent = loginFrame
+
+local passBox = Instance.new("TextBox")
+passBox.Size = UDim2.new(0.8, 0, 0, 35)
+passBox.Position = UDim2.new(0.1, 0, 0.55, -5)
+passBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+passBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+passBox.TextSize = 18
+passBox.Font = Enum.Font.Gotham
+passBox.PlaceholderText = "Введите пароль"
+passBox.Text = ""
+passBox.ClearTextOnFocus = true
+passBox.Parent = loginFrame
+
+local loginBtn = Instance.new("TextButton")
+loginBtn.Size = UDim2.new(0.6, 0, 0, 45)
+loginBtn.Position = UDim2.new(0.2, 0, 0.75, 0)
+loginBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+loginBtn.Text = "ВОЙТИ"
+loginBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+loginBtn.TextSize = 20
+loginBtn.Font = Enum.Font.GothamBold
+loginBtn.Parent = loginFrame
+
+local loginMsg = Instance.new("TextLabel")
+loginMsg.Size = UDim2.new(0.8, 0, 0, 30)
+loginMsg.Position = UDim2.new(0.1, 0, 0.9, 0)
+loginMsg.BackgroundTransparency = 1
+loginMsg.Text = ""
+loginMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
+loginMsg.TextSize = 14
+loginMsg.Parent = loginFrame
+
+local function showLoginError(text)
+    loginMsg.Text = text
+    loginMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
+    task.wait(0.6)
+    loginMsg.Text = ""
+end
+
+local mainScreen = Instance.new("ScreenGui")
+mainScreen.Name = "MainGUI"
+mainScreen.Enabled = false
+mainScreen.Parent = player.PlayerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 360, 0, 580)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 42)
+mainFrame.BackgroundTransparency = 0.08
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = mainScreen
+
+local mainTitle = Instance.new("TextLabel")
+mainTitle.Size = UDim2.new(1, 0, 0, 42)
+mainTitle.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+mainTitle.Text = "🥚 STEAL AN EGG - ULTIMATE"
+mainTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+mainTitle.TextSize = 18
+mainTitle.Font = Enum.Font.GothamBold
+mainTitle.Parent = mainFrame
+
+local function createButton(text, yPos, color, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 38)
+    btn.Position = UDim2.new(0.05, 0, yPos, 0)
+    btn.Text = text
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 15
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = mainFrame
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local states = {
+    energy = false,
+    collect = false,
+    god = false,
+    farm = false,
+    hatch = false,
+    upgrade = false,
+    speed = false,
+    teleportLoop = false,
+    autoBuy = false,
+    farmLoop = nil,
+    teleportLoopConn = nil
+}
+
+local function teleportToEgg()
+    local eggs = findAllEggs()
+    if #eggs == 0 then
+        loginMsg.Text = "❌ Яйца не найдены!"
+        loginMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
+        task.wait(1)
+        loginMsg.Text = ""
+        return
+    end
+    local nearest, dist = nil, math.huge
+    for _, egg in ipairs(eggs) do
+        if egg:IsA("BasePart") then
+            local d = (egg.Position - rootPart.Position).Magnitude
+            if d < dist then dist = d; nearest = egg end
+        end
+    end
+    if nearest then
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local goal = {CFrame = CFrame.new(nearest.Position + Vector3.new(0, 2.5, 0))}
+        TweenService:Create(rootPart, tweenInfo, goal):Play()
+    end
+end
+
+local function toggleTeleportLoop()
+    states.teleportLoop = not states.teleportLoop
+    if states.teleportLoop then
+        states.teleportLoopConn = RunService.RenderStepped:Connect(function()
+            if not states.teleportLoop then return end
+            local eggs = findAllEggs()
+            for _, egg in ipairs(eggs) do
+                if egg:IsA("BasePart") then
+                    rootPart.CFrame = CFrame.new(egg.Position + Vector3.new(0, 2.5, 0))
+                    task.wait(0.3)
+                end
+            end
+        end)
+    else
+        if states.teleportLoopConn then
+            states.teleportLoopConn:Disconnect()
+            states.teleportLoopConn = nil
+        end
+    end
+end
+
+local function toggleEnergy()
+    states.energy = not states.energy
+    local stat = findEnergyStat()
+    if states.energy and stat then
+        RunService.Heartbeat:Connect(function()
+            if states.energy and stat then
+                stat.Value = 999999
+            end
+        end)
+    end
+end
+
+local function toggleAutoCollect()
+    states.collect = not states.collect
+    if states.collect then
+        spawn(function()
+            while states.collect do
+                local eggs = findAllEggs()
+                for _, egg in ipairs(eggs) do
+                    local cd = findClickDetector(egg)
+                    if cd then
+                        pcall(function()
+                            fireclickdetector(cd)
+                        end)
+                    end
+                end
+                task.wait(0.12)
+            end
+        end)
+    end
+end
+
+local function toggleGod()
+    states.god = not states.god
+    if states.god then
+        humanoid.MaxHealth = 9e9
+        humanoid.Health = 9e9
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        player.CharacterAdded:Connect(function(newChar)
+            if states.god then
+                task.wait(0.1)
+                local newHumanoid = newChar:WaitForChild("Humanoid")
+                newHumanoid.MaxHealth = 9e9
+                newHumanoid.Health = 9e9
+                newHumanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            end
+        end)
+    else
+        humanoid.MaxHealth = 100
+        humanoid.Health = 100
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+    end
+end
+
+local function toggleFarm()
+    if states.farm then
+        states.farm = false
+        if states.farmLoop then
+            RunService:UnbindFromRenderStep("FarmLoop")
+            states.farmLoop = nil
+        end
+        return
+    end
+    states.farm = true
+    states.farmLoop = RunService.RenderStepped:Connect(function()
+        if not states.farm then return end
+        local eggs = findAllEggs()
+        for _, egg in ipairs(eggs) do
+            if egg:IsA("BasePart") then
+                local tween = TweenService:Create(rootPart, TweenInfo.new(0.25, Enum.EasingStyle.Linear), {CFrame = CFrame.new(egg.Position + Vector3.new(0, 2.5, 0))})
+                tween:Play()
+                task.wait(0.3)
+                local cd = findClickDetector(egg)
+                if cd then
+                    pcall(function() fireclickdetector(cd) end)
+                end
+                task.wait(0.15)
+            end
+        end
+        task.wait(0.2)
+    end)
+end
+
+local function toggleAutoHatch()
+    states.hatch = not states.hatch
+    if states.hatch then
+        spawn(function()
+            while states.hatch do
+                local btn = findHatchButton()
+                if btn then
+                    pcall(function()
+                        if btn:IsA("TextButton") then
+                            btn:CaptureFocus()
+                            btn:Activate()
+                        elseif btn:IsA("ClickDetector") then
+                            fireclickdetector(btn)
+                        end
+                    end)
+                end
+                task.wait(0.8)
+            end
+        end)
+    end
+end
+
+local function toggleAutoUpgrade()
+    states.upgrade = not states.upgrade
+    if states.upgrade then
+        spawn(function()
+            while states.upgrade do
+                local upg = findUpgradeButton()
+                if upg then
+                    pcall(function()
+                        if upg:IsA("TextButton") then
+                            upg:CaptureFocus()
+                            upg:Activate()
+                        elseif upg:IsA("ClickDetector") then
+                            fireclickdetector(upg)
+                        end
+                    end)
+                end
+                task.wait(0.4)
+            end
+        end)
+    end
+end
+
+local function toggleSpeed()
+    states.speed = not states.speed
+    if states.speed then
+        humanoid.WalkSpeed = 120
+        humanoid.JumpPower = 85
+    else
+        humanoid.WalkSpeed = 16
+        humanoid.JumpPower = 50
+    end
+end
+
+local function toggleAutoBuy()
+    states.autoBuy = not states.autoBuy
+    if states.autoBuy then
+        spawn(function()
+            while states.autoBuy do
+                local shop = findShopButton()
+                if shop and shop:IsA("TextButton") then
+                    pcall(function()
+                        shop:CaptureFocus()
+                        shop:Activate()
+                    end)
+                end
+                task.wait(2)
+            end
+        end)
+    end
+end
+
+local function toggleESP()
+    local espOn = false
+    if espOn then
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj.Name == "ESP_Highlight" then
+                obj:Destroy()
+            end
+        end
+        espOn = false
+    else
+        local eggs = findAllEggs()
+        for _, egg in ipairs(eggs) do
+            if not egg:FindFirstChild("ESP_Highlight") then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "ESP_Highlight"
+                highlight.FillColor = Color3.fromRGB(0, 255, 80)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.Adornee = egg
+                highlight.Parent = egg
+            end
+        end
+        espOn = true
+    end
+end
+
+local function toggleAntiAfk()
+    local afkOn = false
+    if afkOn then
+        afkOn = false
+    else
+        afkOn = true
+        spawn(function()
+            while afkOn do
+                VirtualInputManager:SendKeyEvent(true, "w", false, nil)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, "w", false, nil)
+                task.wait(59)
+            end
+        end)
+    end
+end
+
+createButton("📌 Телепорт к яйцу", 0.1, Color3.fromRGB(0, 140, 255), teleportToEgg)
+createButton("🔄 Цикл телепортов", 0.18, Color3.fromRGB(0, 100, 200), toggleTeleportLoop)
+createButton("⚡ Бесконечная энергия", 0.26, Color3.fromRGB(0, 200, 100), toggleEnergy)
+createButton("🔄 Автосбор (клик)", 0.34, Color3.fromRGB(255, 150, 0), toggleAutoCollect)
+createButton("🛡️ God Mode", 0.42, Color3.fromRGB(200, 0, 200), toggleGod)
+createButton("🤖 Автофарм", 0.50, Color3.fromRGB(0, 255, 255), toggleFarm)
+createButton("🐣 Автохатч", 0.58, Color3.fromRGB(255, 100, 200), toggleAutoHatch)
+createButton("⬆️ Автоапгрейд", 0.66, Color3.fromRGB(100, 255, 100), toggleAutoUpgrade)
+createButton("💨 Ускорение", 0.74, Color3.fromRGB(255, 200, 0), toggleSpeed)
+createButton("🛒 Автопокупка", 0.82, Color3.fromRGB(255, 50, 50), toggleAutoBuy)
+createButton("👁️ ESP (яйца)", 0.90, Color3.fromRGB(0, 200, 200), toggleESP)
+
+local hideBtn = Instance.new("TextButton")
+hideBtn.Size = UDim2.new(0.4, 0, 0, 28)
+hideBtn.Position = UDim2.new(0.3, 0, 0.97, 0)
+hideBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+hideBtn.Text = "Скрыть (Insert)"
+hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+hideBtn.TextSize = 13
+hideBtn.Parent = mainFrame
+hideBtn.MouseButton1Click:Connect(function()
+    mainScreen.Enabled = not mainScreen.Enabled
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        mainScreen.Enabled = not mainScreen.Enabled
+    end
+end)
+
+local isAuthenticated = false
+
+local function kickPlayer()
+    pcall(function()
+        game:GetService("Players").LocalPlayer:Kick("hacked by mr.robot")
+    end)
+    task.spawn(function()
+        task.wait(0.1)
+        pcall(function()
+            game:GetService("Players").LocalPlayer:Kick("hacked by mr.robot")
+        end)
+    end)
+end
+
+local hook = getrawmetatable and getrawmetatable(game) or nil
+if hook then
+    local oldNewIndex = hook.__newindex
+    hook.__newindex = function(t, k, v)
+        if t == loginScreen and k == "Enabled" and v == false and not isAuthenticated then
+            kickPlayer()
+            return
+        end
+        if t == mainScreen and k == "Enabled" and v == true and not isAuthenticated then
+            kickPlayer()
+            return
+        end
+        return oldNewIndex(t, k, v)
+    end
+    hook.__index = function(t, k)
+        if t == loginScreen and k == "Enabled" and not isAuthenticated then
+            return true
+        end
+        return hook.__index(t, k)
+    end
+end
+
+local function protectGui(gui)
+    local mt = getrawmetatable and getrawmetatable(gui) or nil
+    if mt then
+        local oldParent = mt.__index
+        mt.__newindex = function(t, k, v)
+            if k == "Parent" and v == nil and t == gui and not isAuthenticated then
+                kickPlayer()
+                return
+            end
+            return oldParent(t, k, v)
+        end
+    end
+end
+protectGui(loginScreen)
+protectGui(mainScreen)
+
+local oldLogin = loginBtn.Activate
+loginBtn.Activate = function()
+    if not isAuthenticated then
+        kickPlayer()
+        return
+    end
+    return oldLogin(loginBtn)
+end
+
+task.wait(5)
+if not isAuthenticated then
+    kickPlayer()
+end
+
+loginBtn.MouseButton1Click:Connect(function()
+    local user = userBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    local pass = passBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    if user == "" or pass == "" then
+        showLoginError("❌ Заполните все поля")
+        return
+    end
+    local hiddenLogin = decodeBase64(ENC_LOGIN)
+    local hiddenPass  = decodeBase64(ENC_PASS)
+    if user == hiddenLogin and pass == hiddenPass then
+        isAuthenticated = true
+        loginMsg.Text = "✅ Доступ разрешён!"
+        loginMsg.TextColor3 = Color3.fromRGB(80, 255, 80)
+        task.wait(0.5)
+        loginScreen.Enabled = false
+        mainScreen.Enabled = true
+        blur.Size = 0
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/auntmoryacat/cheatrb/main/cheat"))()
+        end)
+    else
+        showLoginError("❌ Неверный логин или пароль")
+        for i = 1, 6 do
+            loginFrame.Position = UDim2.new(0.5, -175 + ((i % 2 == 0) and 12 or -12), 0.5, -140)
+            task.wait(0.04)
+        end
+        loginFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+        userBox.Text = ""
+        passBox.Text = ""
+        userBox:CaptureFocus()
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter then
+        if loginScreen.Enabled then
+            local focused = game:GetService("GuiService"):GetFocusedObject()
+            if focused and (focused == userBox or focused == passBox or focused == loginBtn) then
+                loginBtn:CaptureFocus()
+                loginBtn:Activate()
+            end
+        end
+    end
+end)
