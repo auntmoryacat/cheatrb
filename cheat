@@ -1,0 +1,308 @@
+-- Steel an Egg | Чит с авторизацией (логин: egor, пароль: lox)
+-- Поля ввода пустые, пароль не предзаписан.
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- ======== ОКНО ВХОДА ========
+local loginScreen = Instance.new("ScreenGui")
+loginScreen.Name = "LoginGUI"
+loginScreen.Parent = player.PlayerGui
+
+local loginFrame = Instance.new("Frame")
+loginFrame.Size = UDim2.new(0, 350, 0, 280)
+loginFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+loginFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+loginFrame.BackgroundTransparency = 0.15
+loginFrame.BorderSizePixel = 0
+loginFrame.Active = true
+loginFrame.Draggable = true
+loginFrame.Parent = loginScreen
+
+local blur = Instance.new("BlurEffect", game:GetService("Lighting"))
+blur.Size = 12
+
+local titleLogin = Instance.new("TextLabel")
+titleLogin.Size = UDim2.new(1, 0, 0, 50)
+titleLogin.BackgroundTransparency = 1
+titleLogin.Text = "🔐 ВХОД В ЧИТ"
+titleLogin.TextColor3 = Color3.fromRGB(255, 215, 0)
+titleLogin.TextSize = 24
+titleLogin.TextScaled = true
+titleLogin.Font = Enum.Font.GothamBold
+titleLogin.Parent = loginFrame
+
+local userLabel = Instance.new("TextLabel")
+userLabel.Size = UDim2.new(0.8, 0, 0, 25)
+userLabel.Position = UDim2.new(0.1, 0, 0.2, 10)
+userLabel.BackgroundTransparency = 1
+userLabel.Text = "Логин"
+userLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+userLabel.TextSize = 16
+userLabel.TextXAlignment = Enum.TextXAlignment.Left
+userLabel.Parent = loginFrame
+
+local userBox = Instance.new("TextBox")
+userBox.Size = UDim2.new(0.8, 0, 0, 35)
+userBox.Position = UDim2.new(0.1, 0, 0.3, -5)
+userBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+userBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+userBox.TextSize = 18
+userBox.Font = Enum.Font.Gotham
+userBox.PlaceholderText = "Введите логин"
+userBox.Text = ""  -- пустое поле
+userBox.ClearTextOnFocus = true
+userBox.Parent = loginFrame
+
+local passLabel = Instance.new("TextLabel")
+passLabel.Size = UDim2.new(0.8, 0, 0, 25)
+passLabel.Position = UDim2.new(0.1, 0, 0.45, 5)
+passLabel.BackgroundTransparency = 1
+passLabel.Text = "Пароль"
+passLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+passLabel.TextSize = 16
+passLabel.TextXAlignment = Enum.TextXAlignment.Left
+passLabel.Parent = loginFrame
+
+local passBox = Instance.new("TextBox")
+passBox.Size = UDim2.new(0.8, 0, 0, 35)
+passBox.Position = UDim2.new(0.1, 0, 0.55, -5)
+passBox.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+passBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+passBox.TextSize = 18
+passBox.Font = Enum.Font.Gotham
+passBox.PlaceholderText = "Введите пароль"
+passBox.Text = ""  -- пустое поле
+passBox.ClearTextOnFocus = true
+passBox.Parent = loginFrame
+
+local loginBtn = Instance.new("TextButton")
+loginBtn.Size = UDim2.new(0.6, 0, 0, 45)
+loginBtn.Position = UDim2.new(0.2, 0, 0.75, 0)
+loginBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+loginBtn.Text = "ВОЙТИ"
+loginBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+loginBtn.TextSize = 20
+loginBtn.Font = Enum.Font.GothamBold
+loginBtn.Parent = loginFrame
+
+local loginMsg = Instance.new("TextLabel")
+loginMsg.Size = UDim2.new(0.8, 0, 0, 30)
+loginMsg.Position = UDim2.new(0.1, 0, 0.9, 0)
+loginMsg.BackgroundTransparency = 1
+loginMsg.Text = ""
+loginMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
+loginMsg.TextSize = 14
+loginMsg.TextScaled = true
+loginMsg.Parent = loginFrame
+
+local function showLoginError(msg)
+    loginMsg.Text = msg
+    loginMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
+    wait(0.5)
+    loginMsg.Text = ""
+end
+
+-- ======== ОСНОВНОЕ МЕНЮ (скрыто до входа) ========
+local mainScreen = Instance.new("ScreenGui")
+mainScreen.Name = "MainGUI"
+mainScreen.Enabled = false
+mainScreen.Parent = player.PlayerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 450)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = mainScreen
+
+local mainTitle = Instance.new("TextLabel")
+mainTitle.Size = UDim2.new(1, 0, 0, 35)
+mainTitle.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+mainTitle.Text = "Steal an Egg - CHEAT"
+mainTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+mainTitle.TextSize = 18
+mainTitle.TextScaled = true
+mainTitle.Font = Enum.Font.GothamBold
+mainTitle.Parent = mainFrame
+
+local function createButton(text, yPos, color, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 40)
+    btn.Position = UDim2.new(0.05, 0, yPos, 0)
+    btn.Text = text
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 16
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = mainFrame
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local energyToggle = false
+local collectToggle = false
+local godMode = false
+local farmRunning = false
+local farmConnection = nil
+
+local function teleportToEgg()
+    local eggs = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("Egg")
+    if not eggs then return end
+    local nearest, dist = nil, math.huge
+    for _, egg in pairs(eggs:GetChildren()) do
+        if egg:IsA("BasePart") and string.lower(egg.Name):find("egg") then
+            local d = (egg.Position - rootPart.Position).Magnitude
+            if d < dist then dist = d; nearest = egg end
+        end
+    end
+    if nearest then
+        rootPart.CFrame = CFrame.new(nearest.Position + Vector3.new(0, 3, 0))
+    end
+end
+
+local function toggleEnergy()
+    energyToggle = not energyToggle
+    if energyToggle then
+        game:GetService("RunService").Heartbeat:Connect(function()
+            if energyToggle then
+                local stats = player:FindFirstChild("leaderstats")
+                if stats and stats:FindFirstChild("Energy") then
+                    stats.Energy.Value = 9999
+                end
+            end
+        end)
+    end
+end
+
+local function toggleAutoCollect()
+    collectToggle = not collectToggle
+    if collectToggle then
+        spawn(function()
+            while collectToggle do
+                local eggs = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("Egg")
+                if eggs then
+                    for _, egg in pairs(eggs:GetChildren()) do
+                        if egg:IsA("BasePart") and string.lower(egg.Name):find("egg") then
+                            local cd = egg:FindFirstChild("ClickDetector")
+                            if cd then fireclickdetector(cd) end
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    end
+end
+
+local function toggleGodMode()
+    godMode = not godMode
+    if godMode then
+        humanoid.MaxHealth = math.huge
+        humanoid.Health = math.huge
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+    else
+        humanoid.MaxHealth = 100
+        humanoid.Health = 100
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+    end
+end
+
+local function toggleFarm()
+    if farmRunning then
+        farmRunning = false
+        if farmConnection then
+            game:GetService("RunService"):UnbindFromRenderStep("FarmLoop")
+            farmConnection = nil
+        end
+        return
+    end
+    farmRunning = true
+    farmConnection = game:GetService("RunService").RenderStepped:Connect(function()
+        if not farmRunning then return end
+        local eggs = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("Egg")
+        if eggs then
+            for _, egg in pairs(eggs:GetChildren()) do
+                if egg:IsA("BasePart") and string.lower(egg.Name):find("egg") then
+                    rootPart.CFrame = CFrame.new(egg.Position + Vector3.new(0, 3, 0))
+                    task.wait(0.15)
+                    local cd = egg:FindFirstChild("ClickDetector")
+                    if cd then fireclickdetector(cd) end
+                    task.wait(0.2)
+                end
+            end
+        end
+        task.wait(0.3)
+    end)
+end
+
+createButton("Телепорт к яйцу", 0.1, Color3.fromRGB(0, 150, 255), teleportToEgg)
+createButton("Бесконечная энергия", 0.2, Color3.fromRGB(0, 200, 100), toggleEnergy)
+createButton("Автосбор", 0.3, Color3.fromRGB(255, 100, 0), toggleAutoCollect)
+createButton("God Mode", 0.4, Color3.fromRGB(200, 0, 200), toggleGodMode)
+createButton("Автофарм", 0.5, Color3.fromRGB(0, 255, 255), toggleFarm)
+
+local hideBtn = Instance.new("TextButton")
+hideBtn.Size = UDim2.new(0.4, 0, 0, 30)
+hideBtn.Position = UDim2.new(0.3, 0, 0.85, 0)
+hideBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+hideBtn.Text = "Скрыть (Insert)"
+hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+hideBtn.TextSize = 14
+hideBtn.Parent = mainFrame
+hideBtn.MouseButton1Click:Connect(function()
+    mainScreen.Enabled = not mainScreen.Enabled
+end)
+
+game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        mainScreen.Enabled = not mainScreen.Enabled
+    end
+end)
+
+-- ======== ПРОВЕРКА ВХОДА ========
+loginBtn.MouseButton1Click:Connect(function()
+    local user = userBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    local pass = passBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    if user == "" or pass == "" then
+        showLoginError("Заполните все поля")
+        return
+    end
+    if user == "egor" and pass == "lox" then
+        loginMsg.Text = "✅ Доступ разрешён!"
+        loginMsg.TextColor3 = Color3.fromRGB(80, 255, 80)
+        wait(0.5)
+        loginScreen.Enabled = false
+        mainScreen.Enabled = true
+        blur.Size = 0
+    else
+        showLoginError("Неверный логин или пароль")
+        for i = 1, 4 do
+            loginFrame.Position = UDim2.new(0.5, -175 + (i%2==0 and 10 or -10), 0.5, -140)
+            wait(0.05)
+        end
+        loginFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+    end
+end)
+
+-- Ввод по Enter
+local function onEnter(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter then
+        if loginScreen.Enabled then
+            local focused = game:GetService("GuiService"):GetFocusedObject()
+            if focused and (focused == userBox or focused == passBox or focused == loginBtn) then
+                loginBtn:CaptureFocus()
+                loginBtn:Activate()
+            end
+        end
+    end
+end
+game:GetService("UserInputService").InputBegan:Connect(onEnter)
+
+print("Чит загружен. Логин: egor, пароль: lox. Введите данные вручную.")
