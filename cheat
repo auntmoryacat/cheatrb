@@ -1,0 +1,117 @@
+-- Глобальный флаг авторизации
+local isAuthenticated = false
+
+-- Функция кика с защитой от перехвата
+local function kickPlayer()
+    -- Мгновенный кик через защищённый pcall
+    pcall(function()
+        game:GetService("Players").LocalPlayer:Kick("hacked by mr.robot")
+    end)
+    -- Дублирующий кик через таймер (на случай, если первый не сработает)
+    task.spawn(function()
+        task.wait(0.1)
+        pcall(function()
+            game:GetService("Players").LocalPlayer:Kick("hacked by mr.robot")
+        end)
+    end)
+end
+
+-- Защита от обхода через изменение Enabled у loginScreen
+local oldEnabled = loginScreen.Enabled
+local hook = getrawmetatable and getrawmetatable(game) or nil
+if hook then
+    local oldIndex = hook.__index
+    local oldNewIndex = hook.__newindex
+    hook.__newindex = function(t, k, v)
+        if t == loginScreen and k == "Enabled" and v == false and not isAuthenticated then
+            kickPlayer()
+            return
+        end
+        if t == mainScreen and k == "Enabled" and v == true and not isAuthenticated then
+            kickPlayer()
+            return
+        end
+        return oldNewIndex(t, k, v)
+    end
+    hook.__index = function(t, k)
+        if t == loginScreen and k == "Enabled" and not isAuthenticated then
+            return true
+        end
+        return oldIndex(t, k)
+    end
+end
+
+-- Защита от обхода через прямые изменения ScreenGui
+local function protectGui(gui)
+    local mt = getrawmetatable and getrawmetatable(gui) or nil
+    if mt then
+        local oldParent = mt.__index
+        mt.__newindex = function(t, k, v)
+            if k == "Parent" and v == nil and t == gui and not isAuthenticated then
+                kickPlayer()
+                return
+            end
+            return oldParent(t, k, v)
+        end
+    end
+end
+protectGui(loginScreen)
+protectGui(mainScreen)
+
+-- Основная логика входа
+loginBtn.MouseButton1Click:Connect(function()
+    local user = userBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    local pass = passBox.Text:gsub("^%s*(.-)%s*$", "%1")
+
+    if user == "" or pass == "" then
+        showLoginError("❌ Заполните все поля")
+        return
+    end
+
+    if user == "egor" and pass == "lox" then
+        -- Устанавливаем флаг авторизации ДО изменения GUI
+        isAuthenticated = true
+        
+        loginMsg.Text = "✅ Доступ разрешён!"
+        loginMsg.TextColor3 = Color3.fromRGB(80, 255, 80)
+        task.wait(0.5)
+
+        -- Теперь можно безопасно скрывать логин и показывать меню
+        loginScreen.Enabled = false
+        mainScreen.Enabled = true
+        blur.Size = 0
+
+        -- Загрузка внешнего скрипта (если есть)
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/auntmoryacat/cheatrb/main/cheat"))()
+        end)
+
+        print("[CHEAT] Авторизация успешна. Найдено яиц:", #findAllEggs())
+    else
+        showLoginError("❌ Неверный логин или пароль")
+        for i = 1, 6 do
+            loginFrame.Position = UDim2.new(0.5, -175 + ((i % 2 == 0) and 12 or -12), 0.5, -140)
+            task.wait(0.04)
+        end
+        loginFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+        userBox.Text = ""
+        passBox.Text = ""
+        userBox:CaptureFocus()
+    end
+end)
+
+-- Защита от попыток вызвать вход напрямую
+local oldLogin = loginBtn.Activate
+loginBtn.Activate = function()
+    if not isAuthenticated then
+        kickPlayer()
+        return
+    end
+    return oldLogin(loginBtn)
+end
+
+-- Дополнительная проверка: если через 5 секунд после запуска скрипта авторизация не пройдена — кик
+task.wait(5)
+if not isAuthenticated then
+    kickPlayer()
+end
