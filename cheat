@@ -1,0 +1,172 @@
+-- ============================================================
+--  STEAL AN EGG | FULL CHEAT + LOGIN (egor / lox)
+--  Совместим с Xeno, Synapse X, Krnl, Delta и другими
+--  Версия: 2.733.988 (актуальная на август 2026)[reference:2]
+-- ============================================================
+
+local player = game.Players.LocalPlayer
+
+-- ========== ОКНО ВХОДА ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 340, 0, 260)
+frame.Position = UDim2.new(0.5, -170, 0.5, -130)
+frame.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+frame.BackgroundTransparency = 0.1
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+-- затемнение фона
+local blur = Instance.new("BlurEffect", game:GetService("Lighting"))
+blur.Size = 14
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.BackgroundTransparency = 1
+title.Text = "🔐 АВТОРИЗАЦИЯ"
+title.TextColor3 = Color3.fromRGB(255, 210, 0)
+title.TextSize = 26
+title.Font = Enum.Font.GothamBold
+title.Parent = frame
+
+local lblUser = Instance.new("TextLabel")
+lblUser.Size = UDim2.new(0.8, 0, 0, 22)
+lblUser.Position = UDim2.new(0.1, 0, 0.22, 0)
+lblUser.BackgroundTransparency = 1
+lblUser.Text = "Логин"
+lblUser.TextColor3 = Color3.fromRGB(190, 190, 190)
+lblUser.TextSize = 15
+lblUser.TextXAlignment = Enum.TextXAlignment.Left
+lblUser.Parent = frame
+
+local userBox = Instance.new("TextBox")
+userBox.Size = UDim2.new(0.8, 0, 0, 36)
+userBox.Position = UDim2.new(0.1, 0, 0.32, -5)
+userBox.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+userBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+userBox.TextSize = 18
+userBox.Font = Enum.Font.Gotham
+userBox.PlaceholderText = "Введите логин"
+userBox.Text = ""
+userBox.ClearTextOnFocus = true
+userBox.Parent = frame
+
+local lblPass = Instance.new("TextLabel")
+lblPass.Size = UDim2.new(0.8, 0, 0, 22)
+lblPass.Position = UDim2.new(0.1, 0, 0.48, 0)
+lblPass.BackgroundTransparency = 1
+lblPass.Text = "Пароль"
+lblPass.TextColor3 = Color3.fromRGB(190, 190, 190)
+lblPass.TextSize = 15
+lblPass.TextXAlignment = Enum.TextXAlignment.Left
+lblPass.Parent = frame
+
+local passBox = Instance.new("TextBox")
+passBox.Size = UDim2.new(0.8, 0, 0, 36)
+passBox.Position = UDim2.new(0.1, 0, 0.58, -5)
+passBox.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+passBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+passBox.TextSize = 18
+passBox.Font = Enum.Font.Gotham
+passBox.PlaceholderText = "Введите пароль"
+passBox.Text = ""
+passBox.ClearTextOnFocus = true
+passBox.Parent = frame
+
+local loginBtn = Instance.new("TextButton")
+loginBtn.Size = UDim2.new(0.5, 0, 0, 44)
+loginBtn.Position = UDim2.new(0.25, 0, 0.78, 0)
+loginBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+loginBtn.Text = "ВОЙТИ"
+loginBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+loginBtn.TextSize = 20
+loginBtn.Font = Enum.Font.GothamBold
+loginBtn.Parent = frame
+
+local msg = Instance.new("TextLabel")
+msg.Size = UDim2.new(0.8, 0, 0, 28)
+msg.Position = UDim2.new(0.1, 0, 0.92, 0)
+msg.BackgroundTransparency = 1
+msg.Text = ""
+msg.TextColor3 = Color3.fromRGB(255, 80, 80)
+msg.TextSize = 14
+msg.Parent = frame
+
+-- ========== ЛОГИКА ВХОДА ==========
+local function showError(text)
+    msg.Text = text
+    msg.TextColor3 = Color3.fromRGB(255, 80, 80)
+    task.wait(0.6)
+    msg.Text = ""
+end
+
+local function shakeFrame()
+    for i = 1, 6 do
+        frame.Position = UDim2.new(0.5, -170 + (i % 2 == 0 and 12 or -12), 0.5, -130)
+        task.wait(0.04)
+    end
+    frame.Position = UDim2.new(0.5, -170, 0.5, -130)
+end
+
+local function onLogin()
+    local user = userBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    local pass = passBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    
+    if user == "" or pass == "" then
+        showError("❌ Заполните все поля")
+        return
+    end
+    
+    if user == "egor" and pass == "lox" then
+        -- Успешный вход
+        msg.Text = "✅ Доступ разрешён!"
+        msg.TextColor3 = Color3.fromRGB(80, 255, 80)
+        task.wait(0.4)
+        
+        -- Скрываем окно входа
+        screenGui.Enabled = false
+        blur.Size = 0
+        
+        -- ===== ЗАГРУЗКА ОСНОВНОГО ЧИТА =====
+        -- Speed Hub X — стабильный чит с авто-стилом, хэтчем, апгрейдом и другими функциями[reference:3]
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua", true))()
+        end)
+        
+        if not success then
+            -- Резервный вариант: Solix Hub[reference:4]
+            pcall(function()
+                loadstring(game:HttpGet("https://solixhub.com/loader"))()
+            end)
+        end
+        
+        print("✅ Чит активирован. Логин: egor")
+    else
+        showError("❌ Неверный логин или пароль")
+        shakeFrame()
+        userBox.Text = ""
+        passBox.Text = ""
+        userBox:CaptureFocus()
+    end
+end
+
+loginBtn.MouseButton1Click:Connect(onLogin)
+
+-- Вход по Enter
+game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter then
+        if screenGui.Enabled then
+            local focused = game:GetService("GuiService"):GetFocusedObject()
+            if focused and (focused == userBox or focused == passBox or focused == loginBtn) then
+                onLogin()
+            end
+        end
+    end
+end)
+
+print("🔐 Чит загружен. Введите логин и пароль.")
